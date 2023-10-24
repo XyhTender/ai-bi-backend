@@ -276,7 +276,7 @@ public class ChartController {
 
         boolean saveResult = chartService.save(chart);
 
-        ThrowUtils.throwIf(!saveResult,ErrorCode.SYSTEM_ERROR,"图标保存失败！");
+        ThrowUtils.throwIf(!saveResult,ErrorCode.SYSTEM_ERROR,"图表保存失败！");
 
         return ResultUtils.success(biResponse);
     }
@@ -304,7 +304,7 @@ public class ChartController {
 
         // 拼接查询条件
         queryWrapper.eq(id!=null && id > 0, "id",id);
-        queryWrapper.eq(StringUtils.isNotBlank(name), "name",name);
+        queryWrapper.like(StringUtils.isNotBlank(name), "name",name);
         queryWrapper.eq(StringUtils.isNotBlank(goal), "goal",goal);
         queryWrapper.eq(StringUtils.isNotBlank(chartType), "chartType",chartType);
         queryWrapper.eq(ObjectUtils.isNotEmpty(userId), "userId", userId);
