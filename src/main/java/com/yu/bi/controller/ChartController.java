@@ -1,4 +1,6 @@
 package com.yu.bi.controller;
+
+import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.gson.Gson;
@@ -12,6 +14,7 @@ import com.yu.bi.constant.UserConstant;
 import com.yu.bi.exception.BusinessException;
 import com.yu.bi.exception.ThrowUtils;
 import com.yu.bi.manager.AiManager;
+import com.yu.bi.manager.RedisLimiterManager;
 import com.yu.bi.model.dto.chart.*;
 import com.yu.bi.model.entity.Chart;
 import com.yu.bi.model.entity.User;
@@ -28,7 +31,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 图表接口
@@ -44,9 +49,11 @@ public class ChartController {
     @Resource
     private UserService userService;
 
-
     @Resource
     private AiManager aiManager;
+
+    @Resource
+    private RedisLimiterManager redisLimiterManager;
 
 
     private final static Gson GSON = new Gson();
@@ -233,8 +240,22 @@ public class ChartController {
         ThrowUtils.throwIf(StringUtils.isBlank(goal),ErrorCode.PARAMS_ERROR,"目标为空！");
         ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100,ErrorCode.PARAMS_ERROR,"名称过长！");
 
+        //校验文件
+        long size = multipartFile.getSize();
+        String originalFilename = multipartFile.getOriginalFilename();
+        //校验文件大小
+        final long ONE_MB = 1024 * 1024L;
+        ThrowUtils.throwIf(size > ONE_MB,ErrorCode.PARAMS_ERROR,"文件过大，文件超过1MB");
+        //校验文件后缀
+        String suffix = FileUtil.getSuffix(originalFilename);
+        final List<String> validFileSuffixList = Arrays.asList("xlsx", "xls");
+        ThrowUtils.throwIf(!validFileSuffixList.contains(suffix),ErrorCode.PARAMS_ERROR,"文件后缀非法！");
+
+
         //获取登录的用户
         User loginUser = userService.getLoginUser(request);
+        //限流判断 每个用户一个限流器
+        redisLimiterManager.doRateLimit("genChartByAi_" + loginUser.getId());
 
 //        // 用户输入
 //        StringBuilder userInput = new StringBuilder();
